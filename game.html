@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Snake Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #ddd;
+        }
+        canvas {
+            background-color: #fff;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>    
+</head>
+<body>
+    <label for = "toggle">Use Camera: </label>
+    <input type = "checkbox" id = "toggle">
+    <canvas id="game" width="512" height="512"></canvas>
+    <video autoplay="true" id="videoElement" style="display:none"></video>
+    <script src="game.js"></script>
+</body>
+</html>
