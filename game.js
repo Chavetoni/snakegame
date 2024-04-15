@@ -5,8 +5,6 @@ let score = 0;
 let useCamera = false;
 
 
-
-
 document.getElementById('toggle').addEventListener('change', (event) => {
     useCamera = event.target.checked;
 })
