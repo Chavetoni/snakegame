@@ -4,7 +4,6 @@ let video = document.getElementById('videoElement');
 let score = 0;
 let useCamera = false;
 
-
 document.getElementById('toggle').addEventListener('change', (event) => {
     useCamera = event.target.checked;
 })
@@ -38,11 +37,41 @@ document.addEventListener('keydown', (event) => {
     }
 })
 
+function preloadImages(callback) {
+    const imageSources = [
+        'images/headsnake-up.webp',
+        'images/headsnake-down.webp',
+        'images/headsnake-left.webp',
+        'images/headsnake-right.webp',
+        'images/snakebody-up.webp',
+        'images/snakebody-down.webp',
+        'images/snakebody-left.webp',
+        'images/snakebody-right.webp',
+        
 
-// let snakeImage = new Image();
-// snakeImage.src = "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse1.mm.bing.net%2Fth%3Fid%3DOIP.w_fVe6t5UNxjKCGAR-BB8wHaFP%26pid%3DApi&f=1&ipt=f8b4bdeb95221df42df93b13b08781bae1f7e1f9797adb944f30b4079079659b&ipo=images";
-// let foodImage = new Image();
-// foodImage.src = "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse3.explicit.bing.net%2Fth%3Fid%3DOIP.X6XJB75J66PKWUnvFKN0YQHaHa%26pid%3DApi&f=1&ipt=c320c8fb351b5d117f13757161584dd436473c2c48f95f7fe0e611078875e453&ipo=images";
+    ]
+
+
+    let loadedCount = 0;
+    const totalImages = imageSources.length;
+
+    imageSources.forEach((src) => {
+        const image = new Image();
+        image.onload = () => {
+            loadedCount++;
+            if (loadedCount === totalImages) {
+                callback();
+            }
+        };
+        image.src = src;
+    });
+
+}
+
+preloadImages(() => {
+    requestAnimationFrame(gameLoop);
+});
+
 
 let box = 32;
 let snake = [];
@@ -141,20 +170,101 @@ function createBackground() {
 }
 
 function createSnake() {
-    for(i = 0; i < snake.length; i++) {
-        context.fillStyle = "green";
-        context.fillRect(snake[i].x, snake[i].y, box, box);
-        // context.drawImage(snakeImage, snake[i].x, snake[i].y, box, box);
+    for(let i = 0; i < snake.length; i++) {
+        let snakePart = snake[i];
+        let image;
+
+        if ( i === 0){
+            //Draw the snake head based on directions
+            image = getSnakeHeadImage(direction);
+        } else {
+            //Draw the snake body
+            let prevPart = snake[i - 1];
+            let currentPart = snake[i];
+            let bodyDirection = getBodyDirection(prevPart, currentPart);
+            image = getSnakeBodyImage(bodyDirection);
+        }
+        context.drawImage(image, snakePart.x, snakePart.y, box, box);
     }
+
+    }
+
+function getBodyDirection(prevPart, currentPart) {
+        if(prevPart.x === currentPart.x){
+            return prevPart.y < currentPart.y ? 'down' : 'up';
+        }
+        else{
+            return prevPart.x < currentPart.x ? 'left' : 'right';
+        }
+    }
+
+function getSnakeBodyImage(bodyDirection) {
+    let image = new Image();
+      switch (bodyDirection) {
+        case 'up':
+            image.src = 'images/snakebody-up.webp';
+            break;
+        case 'down':
+            image.src = 'images/snakebody-down.webp';
+            break;
+        case 'left':
+            image.src = 'images/snakebody-left.webp';
+            break;
+        case 'right':
+            image.src = 'images/snakebody-right.webp';
+            break;
+    }
+    return image;
 }
+
+function getSnakeHeadImage(direction) {
+        let image = new Image();    
+        switch (direction) {
+            case 'up':
+                image.src = 'images/headsnake-up.webp';
+                break;
+            case 'down':
+                image.src = 'images/headsnake-down.webp';
+                break;
+            case 'left':
+                image.src = 'images/headsnake-left.webp';
+                break;
+            case 'right':
+                image.src = 'images/headsnake-right.webp';
+                break;
+            default:
+                image.src = 'images/headsnake.webp'; // Default case, can be the front facing head or any one head direction
+                break;
+        }
+        return image;
+    }
+    
+
 
 function drawFood() {
     context.fillStyle = "red";
     context.fillRect(food.x, food.y, box, box);
-    // context.drawImage(foodImage, food.x, food.y, box, box);
+   
+    
 }
 
+
+let lastTimestamp = 0;
+const targetFPS = 5;
+
+function gameLoop(timestamp) {
+    if (timestamp-lastTimestamp >= 1000 / targetFPS) {
+        startGame();
+        lastTimestamp = timestamp
+    }
+    requestAnimationFrame(gameLoop);
+}
+
+requestAnimationFrame(gameLoop)
+
 function startGame() {
+    console.log("game tick");
+
     if(snake[0].x > 15 * box && direction == "right") snake[0].x = 0;
     if(snake[0].x < 0 && direction == "left") snake[0].x = 16 * box;
     if(snake[0].y > 15 * box && direction == "down") snake[0].y = 0;
@@ -174,10 +284,20 @@ function startGame() {
     let snakeX = snake[0].x;
     let snakeY = snake[0].y;
 
-    if(direction == "right") snakeX += box;
-    if(direction == "left") snakeX -= box;
-    if(direction == "up") snakeY -= box;
-    if(direction == "down") snakeY += box;
+    switch (direction) {
+        case 'right':
+            snakeX += box;
+            break;
+        case 'left':
+            snakeX -= box;
+            break;
+        case 'up':
+            snakeY -= box;
+            break;
+        case 'down':
+            snakeY += box;
+            break;
+    }
 
     if(snakeX != food.x || snakeY != food.y){
         snake.pop();
@@ -199,5 +319,5 @@ function startGame() {
     context.fillText("Score: " + score, box, box);
 }
 
-let game = setInterval(startGame, 350);
+
 init();
