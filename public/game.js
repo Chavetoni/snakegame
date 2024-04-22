@@ -3,83 +3,77 @@ let context = canvas.getContext('2d');
 let video = document.getElementById('videoElement');
 let score = 0;
 let useCamera = false;
+let loadedImages = {};
 
 document.getElementById('toggle').addEventListener('change', (event) => {
     useCamera = event.target.checked;
 })
 
 document.addEventListener('keydown', (event) => {
-    if(!useCamera) {
-        switch (event.key) {
-            case 'ArrowUp':
-              if (direction !== 'down') {
-                direction = 'up';
-              }
-              break;
-            case 'ArrowDown':
-              if (direction !== 'up') {
-                direction = 'down';
-              }
-              break;
-            case 'ArrowLeft':
-              if (direction !== 'right') {
-                direction = 'left';
-              }
-              break;
-            case 'ArrowRight':
-              if (direction !== 'left') {
-                direction = 'right';
-              }
-              break;
-            default:
-              break;
-          }
+    const oldDirection = direction;
+    switch(event.key) {
+        case 'ArrowUp':
+            if (direction !== 'down') direction = 'up';
+            break;
+        case 'ArrowDown':
+            if (direction !== 'up') direction = 'down';
+            break;
+        case 'ArrowLeft':
+            if (direction !== 'right') direction = 'left';
+            break;
+        case 'ArrowRight':
+            if (direction !== 'left') direction = 'right';
+            break;
     }
-})
+    if (direction !== oldDirection) console.log('Direction changed to:', direction);
+});
 
 function preloadImages(callback) {
-    const imageSources = [
-        'images/headsnake-up.webp',
-        'images/headsnake-down.webp',
-        'images/headsnake-left.webp',
-        'images/headsnake-right.webp',
-        'images/snakebody-up.webp',
-        'images/snakebody-down.webp',
-        'images/snakebody-left.webp',
-        'images/snakebody-right.webp',
-        
+    const imageSources = {
+        'head-up': 'images/headsnake-up.png',
+        'head-down': 'images/headsnake-down.png',
+        'head-left': 'images/headsnake-left.png',
+        'head-right': 'images/headsnake-right.png',
+        'body-up': 'images/snakebody-up.png',
+        'body-down': 'images/snakebody-down.png',
+        'body-left': 'images/snakebody-left.png',
+        'body-right': 'images/snakebody-right.png',
+    };
 
-    ]
+    let imagesToLoad = Object.keys(imageSources).length;
+    let imagesLoaded = 0;
 
-
-    let loadedCount = 0;
-    const totalImages = imageSources.length;
-
-    imageSources.forEach((src) => {
+    Object.entries(imageSources).forEach(([key, src]) => {
         const image = new Image();
         image.onload = () => {
-            loadedCount++;
-            if (loadedCount === totalImages) {
+            console.log(`loaded ${src} succesffully`);
+            loadedImages[key] = image;
+            imagesLoaded++;
+            if (imagesLoaded === imagesToLoad) {
+                callback();  // Only call the callback once all images have loaded
+            }
+        };
+        image.onerror = () => {
+            console.error("Failed to load image", src);
+            imagesLoaded++;
+            if ( imagesLoaded === imagesToLoad) {
                 callback();
             }
         };
         image.src = src;
     });
-
+    
 }
-
 preloadImages(() => {
-    requestAnimationFrame(gameLoop);
+    init();
+    requestAnimationFrame(gameLoop); // start the game loop when all images are loaded
 });
 
 
-let box = 32;
-let snake = [];
-snake[0] = {
-    x: 8 * box,
-    y: 8 * box
-};
 
+
+let box = 32;
+let snake = [{x:8 * box, y:8 *box}];
 let direction = "right";
 let food = {
     x: Math.floor(Math.random() * 15 + 1) * box,
@@ -114,10 +108,10 @@ async function init() {
     await webcam.play();
     window.requestAnimationFrame(loop);
     
-    labelContainer = document.getElementById('label-container');
-    for (let i = 0; i < maxPredictions; i++) {
-        labelContainer.appendChild(document.createElement("div"));
-    }
+    // labelContainer = document.getElementById('label-container');
+    // for (let i = 0; i < maxPredictions; i++) {
+    //     labelContainer.appendChild(document.createElement("div"));
+    // }
 }
 
 async function loop() {
@@ -184,10 +178,16 @@ function createSnake() {
             let bodyDirection = getBodyDirection(prevPart, currentPart);
             image = getSnakeBodyImage(bodyDirection);
         }
-        context.drawImage(image, snakePart.x, snakePart.y, box, box);
+
+        if (image) {
+            context.drawImage(image, snakePart.x, snakePart.y, box, box);
+        } else {
+            context.fillStyle = 'green';
+            context.fillRect(snakePart.x, snakePart.y, box, box);
+        }
     }
 
-    }
+}
 
 function getBodyDirection(prevPart, currentPart) {
         if(prevPart.x === currentPart.x){
@@ -198,46 +198,26 @@ function getBodyDirection(prevPart, currentPart) {
         }
     }
 
-function getSnakeBodyImage(bodyDirection) {
-    let image = new Image();
-      switch (bodyDirection) {
-        case 'up':
-            image.src = 'images/snakebody-up.webp';
-            break;
-        case 'down':
-            image.src = 'images/snakebody-down.webp';
-            break;
-        case 'left':
-            image.src = 'images/snakebody-left.webp';
-            break;
-        case 'right':
-            image.src = 'images/snakebody-right.webp';
-            break;
-    }
-    return image;
-}
 
 function getSnakeHeadImage(direction) {
-        let image = new Image();    
-        switch (direction) {
-            case 'up':
-                image.src = 'images/headsnake-up.webp';
-                break;
-            case 'down':
-                image.src = 'images/headsnake-down.webp';
-                break;
-            case 'left':
-                image.src = 'images/headsnake-left.webp';
-                break;
-            case 'right':
-                image.src = 'images/headsnake-right.webp';
-                break;
-            default:
-                image.src = 'images/headsnake.webp'; // Default case, can be the front facing head or any one head direction
-                break;
-        }
-        return image;
+    let key = `head-${direction}`;
+    if (!loadedImages[key]) {
+        console.error(`Image not loaded for direction ${direction}`);
+        return null
     }
+    
+    return loadedImages[key];
+}
+
+function getSnakeBodyImage(bodyDirection) {
+    let key = `body-${bodyDirection}`;
+    if (!loadedImages[key]) {
+        console.error(`Image not loaded for body direction ${bodyDirection}`);
+        return null;  // Return null or a default image if the expected image isn't loaded
+    }
+    return loadedImages[key];
+}
+
     
 
 
@@ -248,41 +228,21 @@ function drawFood() {
     
 }
 
+function update() {
+    if (snake[0].x > 15 * box && direction == 'right') snake[0].x = 0;
+    if (snake[0].x < 0 && direction == 'left') snake[0].x = 16 * box;
+    if (snake[0].y > 15 * box && direction == 'down') snake[0].y = 0;
+    if (snake[0].y < 0 && direction == 'up') snake[0].y = 16 * box;
 
-let lastTimestamp = 0;
-const targetFPS = 5;
-
-function gameLoop(timestamp) {
-    if (timestamp-lastTimestamp >= 1000 / targetFPS) {
-        startGame();
-        lastTimestamp = timestamp
-    }
-    requestAnimationFrame(gameLoop);
-}
-
-requestAnimationFrame(gameLoop)
-
-function startGame() {
-    console.log("game tick");
-
-    if(snake[0].x > 15 * box && direction == "right") snake[0].x = 0;
-    if(snake[0].x < 0 && direction == "left") snake[0].x = 16 * box;
-    if(snake[0].y > 15 * box && direction == "down") snake[0].y = 0;
-    if(snake[0].y < 0 && direction == "up") snake[0].y = 16 * box;
-
-    for(i = 1; i < snake.length; i++) {
-        if(snake[0].x == snake[i].x && snake[0].y == snake[i].y) {
-            clearInterval(game);
+    for (i=1; i < snake.length; i++) {
+        if (snake[0].x == snake[i].x && snake[0].y == snake[i].y) {
             alert('Game Over :(');
+            return;
         }
     }
 
-    createBackground();
-    createSnake();
-    drawFood();
-
     let snakeX = snake[0].x;
-    let snakeY = snake[0].y;
+    let snakeY = snake[0].y
 
     switch (direction) {
         case 'right':
@@ -299,25 +259,49 @@ function startGame() {
             break;
     }
 
-    if(snakeX != food.x || snakeY != food.y){
+    if (snakeX != food.x || snakeY != food.y) {
         snake.pop();
-    } else {
+    }else {
         food.x = Math.floor(Math.random() * 15 + 1) * box;
-        food.y = Math.floor(Math.random() * 15 + 1) * box;
+        food.y = Math.floor(Math.random() * 15 + 1 ) * box;
         score++;
     }
 
     let newHead = {
         x: snakeX,
         y: snakeY
-    }
+    };
 
     snake.unshift(newHead);
-    
-    context.fillStyle = "black";
-    context.font = "20px Arial";
+}
+
+let lastRenderTimestamp = 0;
+let lastUpdateTimestamp = 0;
+const targetFPS = 60;
+const gameSpeed = 100;
+
+function gameLoop(timestamp) {
+    requestAnimationFrame(gameLoop);
+
+    if (timestamp - lastUpdateTimestamp >= gameSpeed) {
+        update();  // Move the snake and handle game logic
+        lastUpdateTimestamp = timestamp;
+    }
+
+    //Clear and redraw the canvas every frame for smooth animation
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    drawGame();
+}
+
+function drawGame() {
+    createBackground();
+    createSnake();
+    drawFood();
+
+    context.fillStyle = 'black';
+    context.font = '20px Arial';
     context.fillText("Score: " + score, box, box);
 }
 
-
+requestAnimationFrame(gameLoop)
 init();
