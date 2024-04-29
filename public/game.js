@@ -75,7 +75,7 @@ preloadImages(() => {
 
 
 let box = 32;
-let snake = [{x:8 * box, y:8 *box}];
+let snake = [{x:1 * box, y:8 *box}];
 let direction = "right";
 let food = {
     x: Math.floor(Math.random() * 15 + 1) * box,
@@ -235,20 +235,23 @@ function drawFood() {
 }
 
 function update() {
-    if (snake[0].x > 15 * box && direction == 'right') snake[0].x = 0;
-    if (snake[0].x < 0 && direction == 'left') snake[0].x = 16 * box;
-    if (snake[0].y > 15 * box && direction == 'down') snake[0].y = 0;
-    if (snake[0].y < 0 && direction == 'up') snake[0].y = 16 * box;
+    let snakeX = snake[0].x;
+    let snakeY = snake[0].y
 
-    for (i=1; i < snake.length; i++) {
+    // Check if the snake hits the boundaries
+    if (snakeX < 0 || snakeX >= 16 * box || snakeY < 0 || snakeY >= 16 * box) {
+        showPrompt();
+        return;
+    }
+
+    for (i = 1; i < snake.length; i++) {
         if (snake[0].x == snake[i].x && snake[0].y == snake[i].y) {
-            alert('Game Over :(');
+            showPrompt();
             return;
         }
     }
 
-    let snakeX = snake[0].x;
-    let snakeY = snake[0].y
+    
 
     switch (direction) {
         case 'right':
@@ -285,6 +288,58 @@ let lastRenderTimestamp = 0;
 let lastUpdateTimestamp = 0;
 const targetFPS = 60;
 const gameSpeed = 100;
+
+function resetGame() {
+    snake = [{x: 1 * box, y: 8 * box}];
+    direction = "right";
+    score = 0;
+    food = {
+        x: Math.floor(Math.random() * 15 + 1) * box,
+        y: Math.floor(Math.random() * 15 + 1) * box
+    };
+    lastUpdateTimestamp = 0; 
+    requestAnimationFrame(gameLoop);
+}
+
+
+function showPrompt() {
+    const retryPrompt = document.createElement('div');
+    retryPrompt.style.position = 'absolute';
+    retryPrompt.style.top = '50%';
+    retryPrompt.style.left = '50%';
+    retryPrompt.style.transform = 'translate(-50%, -50%)';
+    retryPrompt.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    retryPrompt.style.color = 'white';
+    retryPrompt.style.padding = '20px';
+    retryPrompt.style.textAlign = 'center';
+    retryPrompt.innerHTML = `
+        <h2>Game Over!</h2>
+        <p> Your score was: ${score}</p>
+        <button id="retryButton">Retry</button>
+    `;
+    document.body.appendChild(retryPrompt);
+
+    function removePrompt() {
+        retryPrompt.remove();
+        document.removeEventListener('clikc', handleClickOutside);
+    }
+
+    function handleClickOutside(event) {
+        if (!retryPrompt.contains(event.target)) {
+            removePrompt();
+            resetGame();
+        }
+    }
+
+    retryPrompt.addEventListener('click', (event) => {
+        if (event.target.id === 'retryButton') {
+            removePrompt()
+            resetGame();
+        }
+    });
+
+    document.addEventListener('click', handleClickOutside);
+}
 
 function gameLoop(timestamp) {
     requestAnimationFrame(gameLoop);
