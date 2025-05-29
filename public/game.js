@@ -4,7 +4,7 @@ let video = document.getElementById('videoElement');
 let score = 0;
 let useCamera = false;
 let loadedImages = {};
-let backgroundImage;
+
 
 document.getElementById('toggle').addEventListener('change', (event) => {
     useCamera = event.target.checked;
@@ -117,10 +117,40 @@ async function init() {
 }
 
 async function loop() {
-    webcam.update(); 
-    await predict();
-    window.requestAnimationFrame(loop);
+    if (useCamera && webcam) { 
+        webcam.update(); 
+        await predict();
+    }
+    window.requestAnimationFrame(loop); 
 }
+
+document.getElementById('toggle').addEventListener('change', async (event) => {
+    useCamera = event.target.checked;
+    if (useCamera) {
+        if (!webcam) { // Initialize webcam if not already done
+            webcam = new tmImage.Webcam(200, 200);
+            await webcam.setup(); // Only setup once
+            await webcam.play();
+            // Optionally make videoElement visible here if you want to show the feed
+            // video.style.display = 'block'; 
+        } else {
+            await webcam.play(); // Resume if paused
+            // video.style.display = 'block';
+        }
+        // Start the loop if it's the first time or if it was stopped
+        if (!window.webcamLoopStarted) { 
+            window.requestAnimationFrame(loop);
+            window.webcamLoopStarted = true;
+        }
+    } else {
+        if (webcam) {
+            webcam.pause(); // Pause the webcam to save resources
+            // Optionally hide the videoElement
+            // video.style.display = 'none';
+        }
+    }
+});
+
 
 // async function predict() {
 //     const prediction = await model.predict(webcam.canvas);
@@ -312,6 +342,7 @@ function showPrompt() {
     retryPrompt.style.color = 'white';
     retryPrompt.style.padding = '20px';
     retryPrompt.style.textAlign = 'center';
+    retryPrompt.style.textAlign = 'gameOverPrompt';
     retryPrompt.innerHTML = `
         <h2>Game Over!</h2>
         <p> Your score was: ${score}</p>
@@ -321,7 +352,7 @@ function showPrompt() {
 
     function removePrompt() {
         retryPrompt.remove();
-        document.removeEventListener('clikc', handleClickOutside);
+        document.removeEventListener('click', handleClickOutside);
     }
 
     function handleClickOutside(event) {
@@ -364,5 +395,3 @@ function drawGame() {
     context.fillText("Score: " + score, box, box);
 }
 
-requestAnimationFrame(gameLoop)
-init();
