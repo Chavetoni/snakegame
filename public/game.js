@@ -52,7 +52,7 @@ function preloadImages(callback) {
             loadedImages[key] = image;
             imagesLoaded++;
             if (imagesLoaded === imagesToLoad) {
-                callback();  // Only call the callback once all images have loaded
+                callback();
             }
         };
         image.onerror = () => {
@@ -68,7 +68,7 @@ function preloadImages(callback) {
 }
 preloadImages(() => {
     init();
-    requestAnimationFrame(gameLoop); // start the game loop when all images are loaded
+    requestAnimationFrame(gameLoop);
 });
 
 

@@ -363,7 +363,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
     <script>
-        // Game variables
+       
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('scoreValue');
@@ -383,11 +383,11 @@
         let lastUpdateTime = 0;
         const gameSpeed = 150;
 
-        // Image loading variables
+       
         let loadedImages = {};
         let imagesLoaded = false;
 
-        // Game state
+    
         const gridSize = 32;
         let tileCount = canvas.width / gridSize;
         
@@ -401,7 +401,7 @@
         
         highScoreElement.textContent = highScore;
 
-        // Image preloading function
+       
         function preloadImages(callback) {
             const imageSources = {
                 'head-up': 'images/headsnake-up.png',
@@ -425,7 +425,7 @@
                     loadedImages[key] = image;
                     imagesLoadedCount++;
                     
-                    // Update loading progress
+                
                     loadingProgress.textContent = `Loading images... ${imagesLoadedCount}/${imagesToLoad}`;
                     
                     if (imagesLoadedCount === imagesToLoad) {
@@ -516,7 +516,7 @@
             }
         }
 
-        // Get snake head image based on direction
+        
         function getSnakeHeadImage(direction) {
             const key = `head-${direction}`;
             if (loadedImages[key]) {
@@ -526,7 +526,7 @@
             return null;
         }
 
-        // Get snake body image based on direction
+        
         function getSnakeBodyImage(bodyDirection) {
             const key = `body-${bodyDirection}`;
             if (loadedImages[key]) {
@@ -552,10 +552,10 @@
                 let image;
 
                 if (i === 0) {
-                    // Draw the snake head
+                  
                     image = getSnakeHeadImage(direction);
                 } else {
-                    // Draw the snake body
+                  
                     const prevPart = snake[i - 1];
                     const bodyDirection = getBodyDirection(prevPart, segment);
                     image = getSnakeBodyImage(bodyDirection);
@@ -564,7 +564,7 @@
                 if (image) {
                     ctx.drawImage(image, segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
                 } else {
-                    // Fallback drawing
+                   
                     ctx.fillStyle = i === 0 ? '#2e7d32' : '#4caf50';
                     ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
                 }
@@ -581,7 +581,7 @@
             ctx.fillRect(food.x * gridSize + 4, food.y * gridSize + 4, gridSize - 12, gridSize - 12);
         }
 
-        // Update game logic
+     
         function updateGame() {
             if (!isGameRunning || isPaused || !imagesLoaded) return;
 
@@ -868,7 +868,7 @@
             }
         });
 
-        // Make functions globally available
+    
         window.restartGame = restartGame;
 
         // Initialize game
