@@ -95,25 +95,25 @@ if (navigator.mediaDevices.getUserMedia) {
     });
 }
 
-// the link to your model provided by Teachable Machine export panel
-// const URL = "https://teachablemachine.withgoogle.com/models/WljeuKE2-/";
+// the link to Teachable Machine
+const URL = "https://teachablemachine.withgoogle.com/models/WnP-Jm3kz/";
 
 async function init() {
-    // const modelURL = URL + "model.json";
-    // const metadataURL = URL + "metadata.json";
+    const modelURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
     
-    // model = await tmImage.load(modelURL, metadataURL);
-    // maxPredictions = model.getTotalClasses();
+    model = await tmImage.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
     
     webcam = new tmImage.Webcam(200, 200); 
     await webcam.setup();
     await webcam.play();
     window.requestAnimationFrame(loop);
     
-    // labelContainer = document.getElementById('label-container');
-    // for (let i = 0; i < maxPredictions; i++) {
-    //     labelContainer.appendChild(document.createElement("div"));
-    // }
+    labelContainer = document.getElementById('label-container');
+    for (let i = 0; i < maxPredictions; i++) {
+        labelContainer.appendChild(document.createElement("div"));
+    }
 }
 
 async function loop() {
@@ -132,7 +132,7 @@ document.getElementById('toggle').addEventListener('change', async (event) => {
             await webcam.setup(); // Only setup once
             await webcam.play();
             // Optionally make videoElement visible here if you want to show the feed
-            // video.style.display = 'block'; 
+            video.style.display = 'block'; 
         } else {
             await webcam.play(); // Resume if paused
             // video.style.display = 'block';
@@ -152,43 +152,43 @@ document.getElementById('toggle').addEventListener('change', async (event) => {
 });
 
 
-// async function predict() {
-//     const prediction = await model.predict(webcam.canvas);
-//     let highestConfidence = 0;
-//     let highestLabel = '';
+async function predict() {
+    const prediction = await model.predict(webcam.canvas);
+    let highestConfidence = 0;
+    let highestLabel = '';
 
-//     for (let i = 0; i < maxPredictions; i++) {
-//         if (prediction[i].probability > highestConfidence) {
-//             highestConfidence = prediction[i].probability;
-//             highestLabel = prediction[i].className;
-//         }
-//     }
+    for (let i = 0; i < maxPredictions; i++) {
+        if (prediction[i].probability > highestConfidence) {
+            highestConfidence = prediction[i].probability;
+            highestLabel = prediction[i].className;
+        }
+    }
 
-//     switch (highestLabel) {
-//         case 'up':
-//             if (direction !== 'down') {
-//                 direction = 'up';
-//             }
-//             break;
-//         case 'down':
-//             if (direction !== 'up') {
-//                 direction = 'down';
-//             }
-//             break;
-//         case 'left':
-//             if (direction !== 'right') {
-//                 direction = 'left';
-//             }
-//             break;
-//         case 'right':
-//             if (direction !== 'left') {
-//                 direction = 'right';
-//             }
-//             break;
-//         default:
-//             break;
-//     }
-// }
+    switch (highestLabel) {
+        case 'up':
+            if (direction !== 'down') {
+                direction = 'up';
+            }
+            break;
+        case 'down':
+            if (direction !== 'up') {
+                direction = 'down';
+            }
+            break;
+        case 'left':
+            if (direction !== 'right') {
+                direction = 'left';
+            }
+            break;
+        case 'right':
+            if (direction !== 'left') {
+                direction = 'right';
+            }
+            break;
+        default:
+            break;
+    }
+}
 
 function createBackground() {
     if (loadedImages['background']) {

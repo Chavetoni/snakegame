@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Game</title>
+    <title>Snake Game with Gestures</title>
     <style>
         * {
             margin: 0;
@@ -201,10 +201,12 @@
             border-radius: 10px;
             overflow: hidden;
             background: rgba(0, 0, 0, 0.5);
+            /* display: none; is set inline in HTML initially */
         }
 
-        #webcamCanvas {
-            display: block;
+        /* This #webcamCanvas is the one you draw to manually */
+        #webcamCanvas { 
+            display: block; /* Make sure it's displayed if its container is */
         }
 
         .status-indicator {
@@ -246,8 +248,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex; 
             justify-content: center;
             align-items: center;
             z-index: 2000;
@@ -279,48 +281,21 @@
         }
 
         @media (max-width: 768px) {
-            .game-container {
-                padding: 20px;
-                margin: 10px;
-            }
-
-            .game-title {
-                font-size: 2rem;
-            }
-
-            .game-info {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .instructions {
-                font-size: 0.9rem;
-            }
-
-            .controls-grid {
-                grid-template-columns: 1fr;
-            }
+            .game-container { padding: 20px; margin: 10px; }
+            .game-title { font-size: 2rem; }
+            .game-info { flex-direction: column; gap: 10px; }
+            .instructions { font-size: 0.9rem; }
+            .controls-grid { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 480px) {
-            .game-title {
-                font-size: 1.5rem;
-            }
-
-            .score-display {
-                font-size: 1.2rem;
-                padding: 8px 15px;
-            }
-
-            .camera-toggle {
-                padding: 8px 12px;
-                font-size: 0.9rem;
-            }
+            .game-title { font-size: 1.5rem; }
+            .score-display { font-size: 1.2rem; padding: 8px 15px; }
+            .camera-toggle { padding: 8px 12px; font-size: 0.9rem; }
         }
     </style>
 </head>
 <body>
-    <!-- Loading overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
             <div class="loading-spinner"></div>
@@ -330,7 +305,7 @@
     </div>
 
     <div class="game-container">
-        <h1 class="game-title">Snake Game </h1>
+        <h1 class="game-title">Snake Game</h1>
         
         <div class="game-info">
             <div class="score-display">
@@ -351,19 +326,15 @@
         <div class="game-area">
             <canvas id="gameCanvas" width="512" height="512"></canvas>
             <div class="webcam-container" id="webcamContainer" style="display: none;">
-                <canvas id="webcamCanvas" width="120" height="120"></canvas>
+                 <canvas id="webcamCanvas" width="120" height="120"></canvas>
             </div>
         </div>
-
-        
     </div>
 
-    <!-- Teachable Machine scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
     <script>
-       
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('scoreValue');
@@ -371,29 +342,26 @@
         const cameraToggle = document.getElementById('cameraToggle');
         const cameraStatus = document.getElementById('cameraStatus');
         const webcamContainer = document.getElementById('webcamContainer');
-        const webcamCanvas = document.getElementById('webcamCanvas');
+        
+        const webcamCanvas = document.getElementById('webcamCanvas'); 
         const webcamCtx = webcamCanvas.getContext('2d');
         const pauseButton = document.getElementById('pauseButton');
         const loadingOverlay = document.getElementById('loadingOverlay');
         const loadingProgress = document.getElementById('loadingProgress');
 
-        let video;
-        let isGameRunning = false; // Start as false until images load
+        let video;  
+        let isGameRunning = false;
         let isPaused = false;
         let lastUpdateTime = 0;
-        const gameSpeed = 150;
+        const gameSpeed = 300; 
 
-       
         let loadedImages = {};
         let imagesLoaded = false;
 
-    
         const gridSize = 32;
         let tileCount = canvas.width / gridSize;
         
-        let snake = [
-            {x: 1, y: 8}
-        ];
+        let snake = [{x: 1, y: 8}];
         let food = {};
         let direction = "right";
         let score = 0;
@@ -401,344 +369,16 @@
         
         highScoreElement.textContent = highScore;
 
+        // --- Teachable Machine Variables ---
+        const TM_MODEL_URL = "https://teachablemachine.withgoogle.com/models/WnP-Jm3kz/"; 
+        let tmModel, maxPredictions;
+        let isTMLoopRunning = false;
+      
+
        
-        function preloadImages(callback) {
-            const imageSources = {
-                'head-up': 'images/headsnake-up.png',
-                'head-down': 'images/headsnake-down.png',
-                'head-left': 'images/headsnake-left.png',
-                'head-right': 'images/headsnake-right.png',
-                'body-up': 'images/snakebody-up.png',
-                'body-down': 'images/snakebody-down.png',
-                'body-left': 'images/snakebody-left.png',
-                'body-right': 'images/snakebody-right.png',
-                'background': 'images/background.jpg',
-            };
-
-            let imagesToLoad = Object.keys(imageSources).length;
-            let imagesLoadedCount = 0;
-
-            Object.entries(imageSources).forEach(([key, src]) => {
-                const image = new Image();
-                image.onload = () => {
-                    console.log(`Loaded ${src} successfully`);
-                    loadedImages[key] = image;
-                    imagesLoadedCount++;
-                    
-                
-                    loadingProgress.textContent = `Loading images... ${imagesLoadedCount}/${imagesToLoad}`;
-                    
-                    if (imagesLoadedCount === imagesToLoad) {
-                        imagesLoaded = true;
-                        loadingProgress.textContent = "Images loaded! Starting game...";
-                        setTimeout(() => {
-                            loadingOverlay.style.display = 'none';
-                            callback();
-                        }, 500);
-                    }
-                };
-                
-                image.onerror = () => {
-                    console.warn(`Failed to load image: ${src}. Using fallback.`);
-                    // Create a colored rectangle as fallback
-                    const fallbackCanvas = document.createElement('canvas');
-                    fallbackCanvas.width = gridSize;
-                    fallbackCanvas.height = gridSize;
-                    const fallbackCtx = fallbackCanvas.getContext('2d');
-                    
-                    // Different colors for different parts
-                    if (key.includes('head')) {
-                        fallbackCtx.fillStyle = '#2e7d32';
-                    } else if (key.includes('body')) {
-                        fallbackCtx.fillStyle = '#4caf50';
-                    } else {
-                        fallbackCtx.fillStyle = '#a8e6cf';
-                    }
-                    fallbackCtx.fillRect(0, 0, gridSize, gridSize);
-                    
-                    loadedImages[key] = fallbackCanvas;
-                    imagesLoadedCount++;
-                    
-                    loadingProgress.textContent = `Loading images... ${imagesLoadedCount}/${imagesToLoad}`;
-                    
-                    if (imagesLoadedCount === imagesToLoad) {
-                        imagesLoaded = true;
-                        loadingProgress.textContent = "Images loaded! Starting game...";
-                        setTimeout(() => {
-                            loadingOverlay.style.display = 'none';
-                            callback();
-                        }, 500);
-                    }
-                };
-                
-                image.src = src;
-            });
-        }
-
-        // Generate food position
-        function generateFood() {
-            food = {
-                x: Math.floor(Math.random() * (tileCount - 2)) + 1,
-                y: Math.floor(Math.random() * (tileCount - 2)) + 1
-            };
-            
-            // Make sure food doesn't spawn on snake
-            for (let segment of snake) {
-                if (segment.x === food.x && segment.y === food.y) {
-                    generateFood();
-                    return;
-                }
-            }
-        }
-
-        // Draw background
-        function drawBackground() {
-            if (loadedImages['background']) {
-                ctx.drawImage(loadedImages['background'], 0, 0, canvas.width, canvas.height);
-            } else {
-                ctx.fillStyle = 'rgba(168, 230, 207, 0.8)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-            
-            // Draw grid overlay
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.lineWidth = 1;
-            for (let i = 0; i <= tileCount; i++) {
-                ctx.beginPath();
-                ctx.moveTo(i * gridSize, 0);
-                ctx.lineTo(i * gridSize, canvas.height);
-                ctx.stroke();
-                
-                ctx.beginPath();
-                ctx.moveTo(0, i * gridSize);
-                ctx.lineTo(canvas.width, i * gridSize);
-                ctx.stroke();
-            }
-        }
-
-        
-        function getSnakeHeadImage(direction) {
-            const key = `head-${direction}`;
-            if (loadedImages[key]) {
-                return loadedImages[key];
-            }
-            console.warn(`Head image not found for direction: ${direction}`);
-            return null;
-        }
-
-        
-        function getSnakeBodyImage(bodyDirection) {
-            const key = `body-${bodyDirection}`;
-            if (loadedImages[key]) {
-                return loadedImages[key];
-            }
-            console.warn(`Body image not found for direction: ${bodyDirection}`);
-            return null;
-        }
-
-        // Calculate body direction
-        function getBodyDirection(prevPart, currentPart) {
-            if (prevPart.x === currentPart.x) {
-                return prevPart.y < currentPart.y ? 'down' : 'up';
-            } else {
-                return prevPart.x < currentPart.x ? 'right' : 'left';
-            }
-        }
-
-        // Draw snake
-        function drawSnake() {
-            for (let i = 0; i < snake.length; i++) {
-                const segment = snake[i];
-                let image;
-
-                if (i === 0) {
-                  
-                    image = getSnakeHeadImage(direction);
-                } else {
-                  
-                    const prevPart = snake[i - 1];
-                    const bodyDirection = getBodyDirection(prevPart, segment);
-                    image = getSnakeBodyImage(bodyDirection);
-                }
-
-                if (image) {
-                    ctx.drawImage(image, segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
-                } else {
-                   
-                    ctx.fillStyle = i === 0 ? '#2e7d32' : '#4caf50';
-                    ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
-                }
-            }
-        }
-
-        // Draw food
-        function drawFood() {
-            ctx.fillStyle = '#ff4444';
-            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
-            
-            // Add highlight
-            ctx.fillStyle = '#ff8888';
-            ctx.fillRect(food.x * gridSize + 4, food.y * gridSize + 4, gridSize - 12, gridSize - 12);
-        }
-
-     
-        function updateGame() {
-            if (!isGameRunning || isPaused || !imagesLoaded) return;
-
-            let snakeX = snake[0].x;
-            let snakeY = snake[0].y;
-
-            // Move snake based on direction
-            switch (direction) {
-                case 'right':
-                    snakeX += 1;
-                    break;
-                case 'left':
-                    snakeX -= 1;
-                    break;
-                case 'up':
-                    snakeY -= 1;
-                    break;
-                case 'down':
-                    snakeY += 1;
-                    break;
-            }
-
-            // Check wall collision
-            if (snakeX < 0 || snakeX >= tileCount || snakeY < 0 || snakeY >= tileCount) {
-                gameOver();
-                return;
-            }
-
-            // Check self collision
-            for (let i = 1; i < snake.length; i++) {
-                if (snake[0].x === snake[i].x && snake[0].y === snake[i].y) {
-                    gameOver();
-                    return;
-                }
-            }
-
-            // Check food collision
-            if (snakeX === food.x && snakeY === food.y) {
-                score++;
-                scoreElement.textContent = score;
-                
-                if (score > highScore) {
-                    highScore = score;
-                    highScoreElement.textContent = highScore;
-                    localStorage.setItem('snakeHighScore', highScore);
-                }
-                
-                generateFood();
-            } else {
-                snake.pop();
-            }
-
-            // Add new head
-            const newHead = {
-                x: snakeX,
-                y: snakeY
-            };
-            snake.unshift(newHead);
-        }
-
-        // Draw everything
-        function drawGame() {
-            if (!imagesLoaded) return;
-            
-            drawBackground();
-            drawFood();
-            drawSnake();
-
-            // Draw score
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 20px Arial';
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 3;
-            ctx.strokeText("Score: " + score, 10, 30);
-            ctx.fillText("Score: " + score, 10, 30);
-
-            // Draw pause overlay
-            if (isPaused) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = 'white';
-                ctx.font = '30px Arial';
-                ctx.textAlign = 'center';
-                ctx.strokeText('PAUSED', canvas.width / 2, canvas.height / 2);
-                ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
-                ctx.textAlign = 'start';
-            }
-        }
-
-        // Game loop
-        function gameLoop(currentTime) {
-            requestAnimationFrame(gameLoop);
-
-            if (currentTime - lastUpdateTime >= gameSpeed) {
-                updateGame();
-                lastUpdateTime = currentTime;
-            }
-
-            drawGame();
-        }
-
-        // Game over
-        function gameOver() {
-            isGameRunning = false;
-            showGameOverModal();
-        }
-
-        // Show game over modal
-        function showGameOverModal() {
-            const modal = document.createElement('div');
-            modal.className = 'game-over-modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <h2>🎮 Game Over!</h2>
-                    <p>Your score: <strong>${score}</strong></p>
-                    ${score === parseInt(highScore) ? '<p style="color: #ffeb3b;">🏆 New High Score!</p>' : ''}
-                    <button class="retry-button" onclick="restartGame()">🔄 Play Again</button>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    document.body.removeChild(modal);
-                    restartGame();
-                }
-            });
-        }
-
-        // Restart game
-        function restartGame() {
-            const existingModal = document.querySelector('.game-over-modal');
-            if (existingModal) {
-                document.body.removeChild(existingModal);
-            }
-            
-            snake = [{x: 1, y: 8}];
-            direction = "right";
-            score = 0;
-            scoreElement.textContent = score;
-            isGameRunning = true;
-            isPaused = false;
-            pauseButton.textContent = '⏸️ Pause';
-            generateFood();
-        }
-
-        // Toggle pause
-        function togglePause() {
-            if (!isGameRunning) return;
-            isPaused = !isPaused;
-            pauseButton.textContent = isPaused ? '▶️ Resume' : '⏸️ Pause';
-        }
-
-        // Camera functionality
         async function initCamera() {
             try {
+                console.log("initCamera: Attempting to get user media...");
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { width: 120, height: 120 } 
                 });
@@ -746,140 +386,286 @@
                 video = document.createElement('video');
                 video.srcObject = stream;
                 video.autoplay = true;
-                video.playsInline = true;
+                video.playsInline = true; 
                 
-                video.addEventListener('loadedmetadata', () => {
-                    webcamContainer.style.display = 'block';
-                    cameraStatus.textContent = 'Connected';
-                    cameraStatus.className = 'status-indicator status-connected';
-                    drawWebcam();
+                
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        video.play().then(resolve).catch(resolve); 
+                    };
                 });
                 
+                console.log("initCamera: Video metadata loaded and play attempted.");
+                webcamContainer.style.display = 'block'; 
+                cameraStatus.textContent = 'Connected';
+                cameraStatus.className = 'status-indicator status-connected';
+                drawWebcam(); 
                 return true;
+
             } catch (error) {
-                console.error('Camera access denied:', error);
+                console.error('initCamera: Error accessing camera:', error);
                 cameraStatus.textContent = 'Access Denied';
                 cameraStatus.className = 'status-indicator status-disconnected';
+                webcamContainer.style.display = 'none';
                 return false;
             }
         }
 
-        function stopCamera() {
+        function stopCamera() { 
             if (video && video.srcObject) {
                 video.srcObject.getTracks().forEach(track => track.stop());
-                video = null;
-                webcamContainer.style.display = 'none';
+                video.srcObject = null;
+            }
+            video = null; 
+            if (webcamContainer) webcamContainer.style.display = 'none';
+            if (cameraStatus) {
                 cameraStatus.textContent = 'Disabled';
                 cameraStatus.className = 'status-indicator status-disconnected';
             }
+            console.log("stopCamera: Camera stopped.");
         }
 
-        function drawWebcam() {
-            if (video && cameraToggle.checked) {
-                webcamCtx.drawImage(video, 0, 0, 120, 120);
+        function drawWebcam() { 
+            if (video && video.readyState >= video.HAVE_ENOUGH_DATA && cameraToggle.checked) {
+                webcamCtx.drawImage(video, 0, 0, webcamCanvas.width, webcamCanvas.height);
+                requestAnimationFrame(drawWebcam); 
+            } else if (cameraToggle.checked && video) {
+                
                 requestAnimationFrame(drawWebcam);
             }
         }
 
-        // Event listeners
-        document.addEventListener('keydown', (e) => {
-            if (!isGameRunning || isPaused) return;
+        // --- Modified Teachable Machine Functions ---
+        async function initTeachableMachineModel() { 
+            
+            const modelURL = TM_MODEL_URL + "model.json";
+            const metadataURL = TM_MODEL_URL + "metadata.json";
+            try {
+                console.log("initTeachableMachineModel: Loading TM model...");
+                loadingProgress.textContent = "Loading gesture model...";
+                // Only show overlay if images are done AND camera is trying to start
+                if (imagesLoaded && cameraToggle.checked) loadingOverlay.style.display = 'flex';
 
-            const oldDirection = direction;
-            switch (e.key) {
-                case 'ArrowUp':
-                    if (direction !== 'down') direction = 'up';
-                    break;
-                case 'ArrowDown':
-                    if (direction !== 'up') direction = 'down';
-                    break;
-                case 'ArrowLeft':
-                    if (direction !== 'right') direction = 'left';
-                    break;
-                case 'ArrowRight':
-                    if (direction !== 'left') direction = 'right';
-                    break;
-                case ' ':
-                case 'Escape':
-                    e.preventDefault();
-                    togglePause();
-                    break;
+                tmModel = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = tmModel.getTotalClasses();
+                console.log("initTeachableMachineModel: TM Model loaded, maxPredictions:", maxPredictions);
+
+                isTMLoopRunning = true;
+                window.requestAnimationFrame(teachableMachineLoop); 
+
+                if (imagesLoaded) {
+                    
+                    if (video && video.readyState >= video.HAVE_METADATA) {
+                         loadingProgress.textContent = "Model and Camera ready!";
+                    } else {
+                        loadingProgress.textContent = "Model loaded! Camera initializing...";
+                    }
+                    setTimeout(() => { if(loadingOverlay.style.display !== 'none') loadingOverlay.style.display = 'none'; }, 500);
+                } else {
+                     loadingProgress.textContent = "Model loaded! Waiting for images...";
+                }
+                return true;
+            } catch (error) {
+                console.error("initTeachableMachineModel: Error loading Teachable Machine model:", error);
+                cameraStatus.textContent = 'TM Model Error'; 
+                if (imagesLoaded) { 
+                     loadingProgress.textContent = "Error loading model: " + error.message;
+                     setTimeout(() => { if(loadingOverlay.style.display !== 'none') loadingOverlay.style.display = 'none'; }, 1000);
+                }
+                isTMLoopRunning = false;
+                return false;
+            }
+        }
+
+        function stopTeachableMachinePrediction() {
+            isTMLoopRunning = false;
+           
+            console.log("stopTeachableMachinePrediction: TM Prediction loop stopped.");
+        }
+
+        async function teachableMachineLoop() {
+            if (!isTMLoopRunning) return; 
+
+          
+            if (video && video.readyState >= video.HAVE_ENOUGH_DATA && cameraToggle.checked) { 
+                await makePrediction();
+            }
+            window.requestAnimationFrame(teachableMachineLoop);
+        }
+
+        async function makePrediction() {
+            if (!tmModel || !webcamCanvas || !isGameRunning || isPaused || !imagesLoaded) {
+                return; 
+            }
+           
+            const prediction = await tmModel.predict(webcamCanvas); 
+            let highestConfidence = 0;
+            let highestLabel = '';
+
+            for (let i = 0; i < maxPredictions; i++) {
+                if (prediction[i].probability > highestConfidence) {
+                    highestConfidence = prediction[i].probability;
+                    highestLabel = prediction[i].className;
+                }
             }
             
-            if (direction !== oldDirection) {
-                console.log('Direction changed to:', direction);
+            const oldGameDirection = direction;
+            if (highestConfidence > 0.7) { 
+                switch (highestLabel) {
+                    case 'up': if (direction !== 'down') direction = 'up'; break;
+                    case 'down': if (direction !== 'up') direction = 'down'; break;
+                    case 'left': if (direction !== 'right') direction = 'left'; break;
+                    case 'right': if (direction !== 'left') direction = 'right'; break;
+                }
             }
-        });
+            if (direction !== oldGameDirection) {
+                console.log('TM Direction:', direction, 'Label:', highestLabel, 'Conf:', highestConfidence.toFixed(2));
+            }
+        }
+       
 
+        function preloadImages(callback) {
+            const imageSources = {
+                'head-up': 'images/headsnake-up.png', 'head-down': 'images/headsnake-down.png',
+                'head-left': 'images/headsnake-left.png', 'head-right': 'images/headsnake-right.png',
+                'body-up': 'images/snakebody-up.png', 'body-down': 'images/snakebody-down.png',
+                'body-left': 'images/snakebody-left.png', 'body-right': 'images/snakebody-right.png',
+                'background': 'images/background.jpg',
+            };
+            let imagesToLoad = Object.keys(imageSources).length;
+            let imagesLoadedCount = 0;
+            loadingProgress.textContent = `Loading images... 0/${imagesToLoad}`;
+
+            Object.entries(imageSources).forEach(([key, src]) => {
+                const image = new Image();
+                image.onload = () => {
+                    loadedImages[key] = image; imagesLoadedCount++;
+                    loadingProgress.textContent = `Loading images... ${imagesLoadedCount}/${imagesToLoad}`;
+                    if (imagesLoadedCount === imagesToLoad) {
+                        imagesLoaded = true;
+                        if (!cameraToggle.checked) {
+                            loadingProgress.textContent = "Assets loaded! Starting game...";
+                            setTimeout(() => { loadingOverlay.style.display = 'none'; callback(); }, 500);
+                        } else { 
+                            loadingProgress.textContent = "Images loaded! Enable camera for gestures.";
+                             setTimeout(() => { loadingOverlay.style.display = 'none'; callback(); }, 500);
+                        }
+                    }
+                };
+                image.onerror = () => {
+                    console.warn(`Fallback for: ${src}`);
+                    const fallback = document.createElement('canvas'); fallback.width = gridSize; fallback.height = gridSize;
+                    const fCtx = fallback.getContext('2d');
+                    fCtx.fillStyle = key.includes('head') ? '#2e7d32' : key.includes('body') ? '#4caf50' : '#a8e6cf';
+                    fCtx.fillRect(0, 0, gridSize, gridSize);
+                    loadedImages[key] = fallback; imagesLoadedCount++;
+                    loadingProgress.textContent = `Loading images... ${imagesLoadedCount}/${imagesToLoad}`;
+                     if (imagesLoadedCount === imagesToLoad) {
+                        imagesLoaded = true;
+                        if (!cameraToggle.checked) {
+                            loadingProgress.textContent = "Assets loaded! Starting game...";
+                            setTimeout(() => { loadingOverlay.style.display = 'none'; callback(); }, 500);
+                        } else {
+                            loadingProgress.textContent = "Images loaded! Enable camera for gestures.";
+                             setTimeout(() => { loadingOverlay.style.display = 'none'; callback(); }, 500);
+                        }
+                    }
+                };
+                image.src = src;
+            });
+        }
+
+        function generateFood() {
+            food = { x: Math.floor(Math.random()*(tileCount-2))+1, y: Math.floor(Math.random()*(tileCount-2))+1 };
+            for (let seg of snake) if (seg.x===food.x && seg.y===food.y) { generateFood(); return; }
+        }
+
+        function drawBackground() {
+            if (loadedImages['background']) ctx.drawImage(loadedImages['background'],0,0,canvas.width,canvas.height);
+            else { ctx.fillStyle='rgba(168,230,207,0.8)'; ctx.fillRect(0,0,canvas.width,canvas.height); }
+            ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+            for(let i=0;i<=tileCount;i++){ ctx.beginPath(); ctx.moveTo(i*gridSize,0); ctx.lineTo(i*gridSize,canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0,i*gridSize); ctx.lineTo(canvas.width,i*gridSize); ctx.stroke(); }
+        }
+        
+        function getSnakeHeadImage(dir) { return loadedImages[`head-${dir}`]||null; }
+        function getSnakeBodyImage(bodyDir) { return loadedImages[`body-${bodyDir}`]||null; }
+        function getBodyDirection(prev,curr) { return prev.x===curr.x ? (prev.y<curr.y?'down':'up') : (prev.x<curr.x?'right':'left'); }
+
+        function drawSnake() {
+            for(let i=0;i<snake.length;i++){ const seg=snake[i]; let img;
+            if(i===0) img=getSnakeHeadImage(direction); else img=getSnakeBodyImage(getBodyDirection(snake[i-1],seg));
+            if(img) ctx.drawImage(img,seg.x*gridSize,seg.y*gridSize,gridSize,gridSize);
+            else { ctx.fillStyle=i===0?'#2e7d32':'#4caf50'; ctx.fillRect(seg.x*gridSize,seg.y*gridSize,gridSize-2,gridSize-2);}}
+        }
+
+        function drawFood() {
+            ctx.fillStyle='#ff4444'; ctx.fillRect(food.x*gridSize,food.y*gridSize,gridSize-2,gridSize-2);
+            ctx.fillStyle='#ff8888'; ctx.fillRect(food.x*gridSize+4,food.y*gridSize+4,gridSize-12,gridSize-12);
+        }
+
+        function updateGame() {
+            if(!isGameRunning||isPaused||!imagesLoaded)return; let snakeX=snake[0].x,snakeY=snake[0].y;
+            switch(direction){ case 'right':snakeX+=1;break; case 'left':snakeX-=1;break; case 'up':snakeY-=1;break; case 'down':snakeY+=1;break;}
+            if(snakeX<0||snakeX>=tileCount||snakeY<0||snakeY>=tileCount){gameOver();return;}
+            for(let i=1;i<snake.length;i++)if(snake[0].x===snake[i].x&&snake[0].y===snake[i].y){gameOver();return;}
+            if(snakeX===food.x&&snakeY===food.y){ score++;scoreElement.textContent=score;
+            if(score>highScore){highScore=score;highScoreElement.textContent=highScore;localStorage.setItem('snakeHighScore',highScore);}
+            generateFood(); } else snake.pop();
+            snake.unshift({x:snakeX,y:snakeY});
+        }
+
+        function drawGame() {
+            if(!imagesLoaded)return; drawBackground();drawFood();drawSnake();
+            ctx.fillStyle='white';ctx.font='bold 20px Arial';ctx.strokeStyle='black';ctx.lineWidth=3;
+            ctx.strokeText("Score: "+score,10,30); ctx.fillText("Score: "+score,10,30);
+            if(isPaused){ ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle='white';ctx.font='30px Arial';ctx.textAlign='center';
+            ctx.strokeText('PAUSED',canvas.width/2,canvas.height/2);ctx.fillText('PAUSED',canvas.width/2,canvas.height/2);ctx.textAlign='start';}
+        }
+
+        function gameLoop(currTime){ requestAnimationFrame(gameLoop); if(currTime-lastUpdateTime>=gameSpeed){updateGame();lastUpdateTime=currTime;} drawGame();}
+        function gameOver(){isGameRunning=false;showGameOverModal();}
+        function showGameOverModal(){ const modal=document.createElement('div');modal.className='game-over-modal';
+        modal.innerHTML=`<div class="modal-content"><h2>🎮 Game Over!</h2><p>Your score: <strong>${score}</strong></p>${score===parseInt(highScore)?'<p style="color:#ffeb3b;">🏆 New High Score!</p>':''}<button class="retry-button" onclick="restartGame()">🔄 Play Again</button></div>`;
+        document.body.appendChild(modal);modal.addEventListener('click',(e)=>{if(e.target===modal){document.body.removeChild(modal);restartGame();}});}
+        window.restartGame=function(){ const modal=document.querySelector('.game-over-modal');if(modal)document.body.removeChild(modal);
+        snake=[{x:1,y:8}];direction="right";score=0;scoreElement.textContent=score;isGameRunning=true;isPaused=false;pauseButton.textContent='⏸️ Pause';generateFood();}
+        function togglePause(){if(!isGameRunning)return;isPaused=!isPaused;pauseButton.textContent=isPaused?'▶️ Resume':'⏸️ Pause';}
+        
+        document.addEventListener('keydown',(e)=>{ if(!isGameRunning||isPaused&&!(e.key===' '||e.key==='Escape'))return; const oldDir=direction;
+        switch(e.key){ case 'ArrowUp':if(direction!=='down')direction='up';break; case 'ArrowDown':if(direction!=='up')direction='down';break;
+        case 'ArrowLeft':if(direction!=='right')direction='left';break; case 'ArrowRight':if(direction!=='left')direction='right';break;
+        case ' ':case 'Escape':e.preventDefault();togglePause();break;} if(direction!==oldDir&&!(e.key===' '||e.key==='Escape'))console.log('Key Dir:',direction);});
+        
         cameraToggle.addEventListener('change', async (e) => {
             if (e.target.checked) {
-                const success = await initCamera();
-                if (!success) {
-                    e.target.checked = false;
+                const cameraSuccess = await initCamera();  
+                if (cameraSuccess) {
+                    const modelSuccess = await initTeachableMachineModel(); 
+                    if (!modelSuccess) {
+                        e.target.checked = false; 
+                        stopCamera();  
+                        stopTeachableMachinePrediction();  
+                    }
+                } else {
+                    e.target.checked = false; 
                 }
             } else {
                 stopCamera();
+                stopTeachableMachinePrediction();
             }
         });
 
-        pauseButton.addEventListener('click', togglePause);
-
-        // Touch controls for mobile
-        let touchStartX = 0;
-        let touchStartY = 0;
-
-        canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-        });
-
-        canvas.addEventListener('touchend', (e) => {
-            if (!isGameRunning || isPaused) return;
-            
-            e.preventDefault();
-            const touchEndX = e.changedTouches[0].clientX;
-            const touchEndY = e.changedTouches[0].clientY;
-            
-            const deltaX = touchEndX - touchStartX;
-            const deltaY = touchEndY - touchStartY;
-            
-            const absDeltaX = Math.abs(deltaX);
-            const absDeltaY = Math.abs(deltaY);
-            
-            const oldDirection = direction;
-            
-            if (absDeltaX > absDeltaY) {
-                if (deltaX > 0 && direction !== 'left') {
-                    direction = 'right';
-                } else if (deltaX < 0 && direction !== 'right') {
-                    direction = 'left';
-                }
-            } else {
-                if (deltaY > 0 && direction !== 'up') {
-                    direction = 'down';
-                } else if (deltaY < 0 && direction !== 'down') {
-                    direction = 'up';
-                }
-            }
-            
-            if (direction !== oldDirection) {
-                console.log('Direction changed to:', direction);
-            }
-        });
-
-    
-        window.restartGame = restartGame;
-
-        // Initialize game
-        function initGame() {
-            tileCount = canvas.width / gridSize;
-            generateFood();
-            isGameRunning = true;
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Start the game after images load
+        pauseButton.addEventListener('click',togglePause);
+        let touchStartX=0,touchStartY=0;canvas.addEventListener('touchstart',(e)=>{e.preventDefault();touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;});
+        canvas.addEventListener('touchend',(e)=>{if(!isGameRunning||isPaused)return;e.preventDefault();const touchEndX=e.changedTouches[0].clientX,touchEndY=e.changedTouches[0].clientY;
+        const dX=touchEndX-touchStartX,dY=touchEndY-touchStartY,absDX=Math.abs(dX),absDY=Math.abs(dY);const oldDir=direction;
+        if(absDX>absDY){if(dX>0&&direction!=='left')direction='right';else if(dX<0&&direction!=='right')direction='left';}
+        else{if(dY>0&&direction!=='up')direction='down';else if(dY<0&&direction!=='down')direction='up';}
+        if(direction!==oldDir)console.log('Touch Dir:',direction);});
+        
+        function initGame(){tileCount=Math.floor(canvas.width/gridSize);canvas.width=tileCount*gridSize;canvas.height=tileCount*gridSize;generateFood();isGameRunning=true;requestAnimationFrame(gameLoop);}
         preloadImages(initGame);
     </script>
 </body>
